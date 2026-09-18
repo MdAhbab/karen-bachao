@@ -12,6 +12,7 @@ directive plus the underlying energy, battery and grid rules.
 | **Health endpoint** | `GET /health` → `{"status":"ok"}` |
 | **Main endpoint** | `POST /optimize-energy` |
 | **Operator console** | `GET /ui/` (served by the same process) |
+| **Live endpoint** | https://buptestapi.ahbab.dev |
 | **LLM providers** | Google Gemini and Groq (raced, separate quotas) |
 | **Optimizer** | SciPy `linprog` with the HiGHS backend |
 
@@ -392,6 +393,29 @@ curl http://localhost:8000/health
 
 The image binds `0.0.0.0:8000`, runs as an unprivileged user, and contains **no
 baked-in credentials** — the key is supplied at runtime.
+
+### Live deployment
+
+The service runs at **https://buptestapi.ahbab.dev**:
+
+```bash
+curl https://buptestapi.ahbab.dev/health
+# {"status":"ok"}
+```
+
+It shares a VM with unrelated sites, so it does **not** run its own nginx.
+The API container binds loopback only and the host nginx proxies to it:
+
+```bash
+docker run -d --name gridwise-api --restart unless-stopped   -p 127.0.0.1:8200:8000 --env-file .env --memory 512m gridwise-api:1.0.0
+```
+
+`/etc/nginx/sites-available/buptestapi.conf` proxies `buptestapi.ahbab.dev`
+to `127.0.0.1:8200`, with TLS issued by the host's certbot. Nothing binds
+ports 80, 443 or 8000, so co-hosted sites are untouched.
+
+> Use `run_onVM.py` only on a **dedicated** VM. It frees ports 80, 443 and
+> 8000 before starting, which would stop anything already serving on them.
 
 ### Full VM deployment (Docker + nginx + HTTPS)
 

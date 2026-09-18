@@ -15,6 +15,12 @@ What it does, in order:
 
 Extra modes:
     --watchdog          poll /health and restart the API if it stops answering
+
+WARNING: this script is for a DEDICATED VM. It frees ports 80, 443 and 8000
+before starting, which stops anything already serving on them. To deploy onto
+a VM that already hosts other sites, run only the API container on a spare
+loopback port and add a server block to the existing nginx instead. The README
+section "Live deployment" shows that arrangement.
     --renew             renew the certificate and reload nginx
     --stop              stop the stack and exit
     --skip-tls          stay on plain HTTP (useful before DNS has propagated)
