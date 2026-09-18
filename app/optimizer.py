@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 from scipy.optimize import linprog
 
-from app.config import BOUND_EPS
+from app.config import ROUND_DP
 
 H = 24
 
@@ -113,9 +113,9 @@ def _solve_lp(c: Constraints):
         row[2 * H:2 * H + h + 1] = 1.0
         row[3 * H:3 * H + h + 1] = -1.0
         a_ub[2 * h] = row
-        b_ub[2 * h] = c.capacity - c.initial_energy - BOUND_EPS
+        b_ub[2 * h] = c.capacity - c.initial_energy
         a_ub[2 * h + 1] = -row
-        b_ub[2 * h + 1] = c.initial_energy - c.floor[h] - BOUND_EPS
+        b_ub[2 * h + 1] = c.initial_energy - c.floor[h]
 
     bounds = (
         [(0.0, None if np.isinf(c.max_grid[h]) else c.max_grid[h]) for h in range(H)]
@@ -139,21 +139,23 @@ def _to_plan(c: Constraints, x: np.ndarray) -> list[dict]:
     solar_raw = x[H:2 * H]
 
     plan: list[dict] = []
-    energy = c.initial_energy
+    energy = round(c.initial_energy, ROUND_DP)
     for h in range(H):
-        net = float(charge[h] - discharge[h])
-        if abs(net) < 1e-9:
-            net = 0.0
-        solar_used = min(max(float(solar_raw[h]), 0.0), float(c.effective_solar[h]))
+        # Round the battery movement first, then accumulate the rounded value,
+        # so the reported battery_kwh and battery_energy_after_kwh agree exactly
+        # instead of drifting apart by the rounding residue.
+        net = round(float(charge[h] - discharge[h]), ROUND_DP)
+        solar_used = round(
+            min(max(float(solar_raw[h]), 0.0), float(c.effective_solar[h])), ROUND_DP)
 
         # grid = demand + net_charge - solar_used. A negative result means we
         # over-credited solar, so trim solar rather than clipping grid.
-        grid = c.demand[h] + net - solar_used
+        grid = round(c.demand[h] + net - solar_used, ROUND_DP)
         if grid < 0.0:
-            solar_used = max(0.0, c.demand[h] + net)
+            solar_used = round(max(0.0, c.demand[h] + net), ROUND_DP)
             grid = 0.0
 
-        energy += net
+        energy = round(energy + net, ROUND_DP)
         if net > 0:
             action, magnitude = "charge", net
         elif net < 0:
@@ -163,11 +165,11 @@ def _to_plan(c: Constraints, x: np.ndarray) -> list[dict]:
 
         plan.append({
             "hour": h,
-            "grid_kwh": round(grid, 6),
-            "solar_used_kwh": round(solar_used, 6),
+            "grid_kwh": grid,
+            "solar_used_kwh": solar_used,
             "battery_action": action,
-            "battery_kwh": round(magnitude, 6),
-            "battery_energy_after_kwh": round(energy, 6),
+            "battery_kwh": magnitude,
+            "battery_energy_after_kwh": energy,
         })
     return plan
 

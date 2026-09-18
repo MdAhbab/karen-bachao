@@ -226,3 +226,20 @@ pre#raw {
   font-size: 12px;
   max-height: 420px;
 }
+
+/* ---- energy mix legend ---- */
+.legend {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+  margin: -4px 0 10px;
+}
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 9px; border-radius: 2px; display: inline-block; }
+.sw.g { background: var(--grid); }
+.sw.s { background: var(--solar); }
+.sw.b { background: var(--battery); }
+.legend-note { opacity: .75; }

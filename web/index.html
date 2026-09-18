@@ -58,11 +58,25 @@
     <p id="summary" class="summary"></p>
 
     <h2>24-Hour Plan</h2>
+    <p class="legend">
+      <span class="key"><i class="sw g"></i>grid</span>
+      <span class="key"><i class="sw s"></i>solar used</span>
+      <span class="key"><i class="sw b"></i>battery discharge</span>
+      <span class="legend-note">Bars share one scale across all 24 hours.
+        <strong>Battery moved</strong> is the energy shifted in or out this hour;
+        <strong>battery stored after</strong> is what remains in the battery once
+        the hour ends. Hover any column heading for its API field name.</span>
+    </p>
     <table id="plan">
       <thead>
         <tr>
-          <th>Hour</th><th>Grid kWh</th><th>Solar used kWh</th>
-          <th>Battery action</th><th>Battery kWh</th><th>Energy after kWh</th><th>Mix</th>
+          <th title="hour - hour of the day, 0 to 23">Hour</th>
+          <th title="grid_kwh - energy bought from the grid this hour">Grid kWh</th>
+          <th title="solar_used_kwh - solar energy actually consumed this hour">Solar used kWh</th>
+          <th title="battery_action - charge, discharge or idle">Battery action</th>
+          <th title="battery_kwh - how much energy moved in or out of the battery this hour">Battery moved kWh</th>
+          <th title="battery_energy_after_kwh - energy left stored in the battery at the end of this hour">Battery stored after kWh</th>
+          <th title="where this hour&#39;s supply came from">Energy mix</th>
         </tr>
       </thead>
       <tbody></tbody>

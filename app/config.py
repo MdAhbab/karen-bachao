@@ -39,9 +39,10 @@ PORT = int(os.environ.get("PORT", "8000"))
 
 # Judge tolerance is 0.01; we keep our own slack an order of magnitude tighter.
 TOLERANCE = 1e-3
-# Battery bounds are shrunk by this much inside the LP so float drift in the
-# solver can never push a reported state outside a strict bound check.
-BOUND_EPS = 1e-6
+# Reported values are rounded to this many decimals. HiGHS respects bounds to
+# roughly 1e-9 and the judge tolerance is 0.01, so rounding here is what keeps
+# the plan clean; the LP needs no artificial safety margin on its bounds.
+ROUND_DP = 6
 
 
 def llm_available() -> bool:

@@ -304,9 +304,12 @@ function renderNotes(interpretations, notes) {
   }).join("");
 }
 
+const discharged = (p) => (p.battery_action === "discharge" ? p.battery_kwh : 0);
+
 function renderPlan(plan) {
+  // Scale every bar to the largest hourly supply so hours compare directly.
   const peak = Math.max(...plan.map(
-    (p) => p.grid_kwh + p.solar_used_kwh + p.battery_kwh), 1);
+    (p) => p.grid_kwh + p.solar_used_kwh + discharged(p)), 1);
 
   document.querySelector("#plan tbody").innerHTML = plan.map((p) => {
     const width = (value) => `width:${(value / peak) * 100}%`;
@@ -319,10 +322,10 @@ function renderPlan(plan) {
         <td>${round(p.battery_kwh)}</td>
         <td>${round(p.battery_energy_after_kwh)}</td>
         <td>
-          <div class="bar">
+          <div class="bar" title="grid ${round(p.grid_kwh)} kWh, solar ${round(p.solar_used_kwh)} kWh, battery discharge ${round(discharged(p))} kWh">
             <i class="g" style="${width(p.grid_kwh)}"></i>
             <i class="s" style="${width(p.solar_used_kwh)}"></i>
-            <i class="b" style="${width(p.battery_action === "discharge" ? p.battery_kwh : 0)}"></i>
+            <i class="b" style="${width(discharged(p))}"></i>
           </div>
         </td>
       </tr>`;
