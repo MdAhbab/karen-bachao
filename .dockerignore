@@ -1,0 +1,9 @@
+.git/
+.env
+*.log
+.run.pid
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+certbot/

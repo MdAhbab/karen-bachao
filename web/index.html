@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GridWise Operator Console</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>GridWise <span>Operator Console</span></h1>
+  <p class="sub">LLM-assisted operator directive interpretation and 24-hour energy scheduling</p>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="row">
+      <label for="sample">Load sample</label>
+      <select id="sample"><option value="">Loading samples...</option></select>
+
+      <label for="file" class="filebtn">Upload JSON
+        <input type="file" id="file" accept=".json,application/json" hidden>
+      </label>
+
+      <button id="clear" class="ghost">Clear</button>
+    </div>
+
+    <p class="hint">
+      Paste your own scenario JSON below or upload a <code>.json</code> file.
+      It is validated here before anything is sent to the API.
+    </p>
+
+    <textarea id="payload" spellcheck="false" rows="14"
+              placeholder='{&#10;  "scenario_id": "GRID-101",&#10;  "operator_notes": ["..."],&#10;  "hours": [ 24 entries ],&#10;  "battery": { ... }&#10;}'></textarea>
+
+    <div id="validation" class="validation hidden"></div>
+
+    <div class="row actions">
+      <button id="validate" class="ghost">Validate JSON</button>
+      <button id="run" class="primary">Validate &amp; Optimize</button>
+      <span id="status" class="status"></span>
+    </div>
+  </section>
+
+  <section id="results" class="hidden">
+
+    <!-- Operator notes and the hours each directive affects -->
+    <h2>Operator Notes &rarr; Directives</h2>
+    <div id="notes"></div>
+
+    <h2>Totals</h2>
+    <div class="totals">
+      <div class="stat"><span class="label">Total grid</span><span class="value" id="t-grid">-</span><span class="unit">kWh</span></div>
+      <div class="stat"><span class="label">Total cost</span><span class="value" id="t-cost">-</span><span class="unit">BDT</span></div>
+      <div class="stat"><span class="label">Peak grid</span><span class="value" id="t-peak">-</span><span class="unit">kWh</span></div>
+    </div>
+    <p id="summary" class="summary"></p>
+
+    <h2>24-Hour Plan</h2>
+    <table id="plan">
+      <thead>
+        <tr>
+          <th>Hour</th><th>Grid kWh</th><th>Solar used kWh</th>
+          <th>Battery action</th><th>Battery kWh</th><th>Energy after kWh</th><th>Mix</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>Raw Response</h2>
+    <details>
+      <summary>Show response JSON</summary>
+      <pre id="raw"></pre>
+    </details>
+  </section>
+
+  <section id="error" class="hidden error"></section>
+</main>
+
+<footer>
+  <code>GET /health</code> &middot; <code>POST /optimize-energy</code>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
