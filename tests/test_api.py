@@ -7,6 +7,12 @@
 Exercises the public sample pack and the synthetic scenarios, replays every
 returned plan, compares cost against the organizer reference, checks the
 error contract, and reports p95 latency.
+
+Every case here costs a model-provider call on a cold cache. Use --limit N to
+run a smaller sample when quota is tight:
+
+    python tests/test_api.py --limit 5
+    python tests/test_api.py --limit 3 --skip-synthetic
 """
 
 import argparse
@@ -202,6 +208,11 @@ def check_error_contract(client, base_url):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="only run the first N public cases and N synthetic "
+                             "scenarios, to conserve model-provider quota")
+    parser.add_argument("--skip-synthetic", action="store_true",
+                        help="run only the organizer public cases")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
 
@@ -227,7 +238,10 @@ def main():
     print("\nPublic sample cases")
     print("-" * 72)
     latencies, ratios, hits, hit_total = [], [], 0, 0
-    for case in load("public_cases.json")["cases"]:
+    public_cases = load("public_cases.json")["cases"]
+    if args.limit:
+        public_cases = public_cases[:args.limit]
+    for case in public_cases:
         expected = [
             {"directive_type": e["directive_type"],
              "structured_adjustment": e["structured_adjustment"]}
@@ -249,7 +263,10 @@ def main():
     # --- synthetic scenarios -------------------------------------------
     print("\nSynthetic scenarios (paraphrase and boundary coverage)")
     print("-" * 72)
-    for scenario in load("scenarios.json")["scenarios"]:
+    scenarios = [] if args.skip_synthetic else load("scenarios.json")["scenarios"]
+    if args.limit:
+        scenarios = scenarios[:args.limit]
+    for scenario in scenarios:
         result = run_case(client, base_url, scenario["id"], scenario["input"],
                           scenario["expected_directives"], None)
         latencies.append(result["elapsed"])

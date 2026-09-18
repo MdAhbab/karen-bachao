@@ -30,14 +30,21 @@ SUPPORTED DIRECTIVE TYPES (no others exist):
 RULES:
 
 - Return exactly one entry per operator note, in note_index order 0..N-1.
-- Time windows are START-INCLUSIVE and END-EXCLUSIVE. "1 PM to 3 PM" is
-  [13, 14]. "noon until 2 PM" is [12, 13]. "6 PM until 9 PM" is [18, 19, 20].
-  "from 2 AM until 5 AM" is [2, 3, 4]. A window ending at or past midnight
-  stops at hour 23, so "10 PM until midnight" is [22, 23].
-- When a note gives a bare clock time with no AM/PM and no 24-hour clock, it
-  refers to campus working hours, so read it as afternoon. "Panel washing from
-  one until three" is [13, 14], NOT [1, 2]. "from two to four" is [14, 15].
-  Only treat a bare time as early morning when the note says so explicitly.
+- Time windows are START-INCLUSIVE and END-EXCLUSIVE. Do not pattern-match an
+  example below; COUNT the hours. List every whole hour starting at the start
+  hour, going up to but NOT including the end hour. Note how the length of the
+  list changes with the end hour:
+    "1 PM to 3 PM"        -> [13, 14]
+    "1 PM to 4 PM"        -> [13, 14, 15]
+    "1 PM to 6 PM"        -> [13, 14, 15, 16, 17]
+    "noon until 2 PM"     -> [12, 13]
+    "6 PM until 9 PM"     -> [18, 19, 20]
+    "from 2 AM until 5 AM" -> [2, 3, 4]
+  A window ending at midnight stops at hour 23, so "10 PM until midnight" is
+  [22, 23].
+- A bare clock time with no AM/PM and no 24-hour clock means campus working
+  hours, so read it as afternoon. "from one until four" is [13, 14, 15], NOT
+  [1, 2, 3]. Only read a bare time as early morning if the note says so.
 - hours must be unique integers 0..23 in ascending order.
 - For solar_reduction, `factor` is the FRACTION OF SOLAR THAT REMAINS, not the
   reduction. "an 80% reduction" means factor 0.2. "drops to about 25%" means

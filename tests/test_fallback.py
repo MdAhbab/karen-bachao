@@ -73,6 +73,10 @@ def test_synthetic_scenarios(scenario):
     ("from midnight until 3 AM", [0, 1, 2]),
     ("from 10 PM until midnight", [22, 23]),
     ("from one until three", [13, 14]),
+    # Window length must follow the end hour, not a memorised example shape.
+    ("from one until four", [13, 14, 15]),
+    ("from 1 PM to 6 PM", [13, 14, 15, 16, 17]),
+    ("from 3 PM to 4 PM", [15]),
     ("between 11 AM and 2 PM", [11, 12, 13]),
     ("from 6 PM until 9 PM", [18, 19, 20]),
 ])
