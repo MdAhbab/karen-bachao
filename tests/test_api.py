@@ -193,7 +193,8 @@ def check_error_contract(client, base_url):
     results.append(("only 5 hours", r.status_code in (400, 422), r.status_code))
 
     body = r.text.lower()
-    leaked = any(token in body for token in ("traceback", "gemini_api_key", "aq.ab8"))
+    leaked = any(token in body for token in
+                 ("traceback", "gemini_api_key", "groq_api_key", "aq.ab8", "gsk_"))
     results.append(("no secret or stack trace leaked", not leaked, "clean" if not leaked else "LEAK"))
     return results
 

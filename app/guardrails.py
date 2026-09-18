@@ -85,7 +85,16 @@ def sanitize_entry(raw: Any, note_index: int, battery: Any) -> dict:
         return _no_op(note_index)
 
     explanation = str(raw.get("explanation") or "").strip()[:400]
-    kind = raw.get("directive_type")
+
+    # Providers disagree on this field name: some answer with "type" or
+    # "directive". Treat them all as the same field rather than discarding a
+    # correct interpretation over its label.
+    kind = None
+    for key in ("directive_type", "type", "directive"):
+        value = raw.get(key)
+        if isinstance(value, str) and value.strip():
+            kind = value.strip()
+            break
     if not isinstance(kind, str) or kind not in ALLOWED:
         return _no_op(note_index, explanation)
     if kind == "no_op":

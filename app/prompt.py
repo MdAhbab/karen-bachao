@@ -33,7 +33,11 @@ RULES:
 - Time windows are START-INCLUSIVE and END-EXCLUSIVE. "1 PM to 3 PM" is
   [13, 14]. "noon until 2 PM" is [12, 13]. "6 PM until 9 PM" is [18, 19, 20].
   "from 2 AM until 5 AM" is [2, 3, 4]. A window ending at or past midnight
-  stops at hour 23.
+  stops at hour 23, so "10 PM until midnight" is [22, 23].
+- When a note gives a bare clock time with no AM/PM and no 24-hour clock, it
+  refers to campus working hours, so read it as afternoon. "Panel washing from
+  one until three" is [13, 14], NOT [1, 2]. "from two to four" is [14, 15].
+  Only treat a bare time as early morning when the note says so explicitly.
 - hours must be unique integers 0..23 in ascending order.
 - For solar_reduction, `factor` is the FRACTION OF SOLAR THAT REMAINS, not the
   reduction. "an 80% reduction" means factor 0.2. "drops to about 25%" means

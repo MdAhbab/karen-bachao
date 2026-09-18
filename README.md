@@ -12,7 +12,7 @@ directive plus the underlying energy, battery and grid rules.
 | **Health endpoint** | `GET /health` → `{"status":"ok"}` |
 | **Main endpoint** | `POST /optimize-energy` |
 | **Operator console** | `GET /ui/` (served by the same process) |
-| **LLM provider** | Google Gemini API |
+| **LLM providers** | Google Gemini and Groq (raced, separate quotas) |
 | **Optimizer** | SciPy `linprog` with the HiGHS backend |
 
 ---
@@ -27,10 +27,12 @@ cd karen-bachao
 cp .env.example .env
 ```
 
-Open `.env` and set your Gemini API key:
+Open `.env` and set at least one provider key. Setting both is better: they sit
+on separate quotas, so one running out does not stop interpretation.
 
 ```
-GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 ```
 
 Then start everything with one command:
@@ -171,8 +173,13 @@ Expected result on a healthy run:
   failures         : 0
   directive match  : 37/37  (100%)
   optimization     : 1.0000 average quality ratio
-  latency          : p95 2.32s   max 2.38s
+  latency          : p95 5.48s   max 5.88s
 ```
+
+That p95 is a deliberate worst case: 25 requests fired back to back with no gap,
+which trips per-model rate limits and forces escalation to later tiers. Sent at
+a realistic pace the p95 is about 4.2s, and a repeated note is served from cache
+in roughly 0.01s.
 
 The live suite replays every returned plan against the energy-balance, battery,
 solar and directive rules, compares cost to the organizer reference, checks the
@@ -214,18 +221,30 @@ and returns a structured directive per note. Its output is **never** trusted
 directly — it passes through `guardrails.py` before it can influence the
 optimizer, and the finished schedule is replayed afterwards.
 
-**Model chain** (configurable via `GEMINI_MODELS`, first valid answer wins):
+**Two providers, twelve models.** Google Gemini and Groq bill against entirely
+separate quotas, so one provider being rate limited or exhausted does not stop
+interpretation:
 
-```
-gemini-3.8-flash, gemini-3.7-flash, gemini-3.6-flash,
-gemini-3.5-flash, gemini-3.1-pro-preview
-```
+| Provider | Models (`GEMINI_MODELS` / `GROQ_MODELS`) |
+| :--- | :--- |
+| Gemini | `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3-flash-preview`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3.1-pro-preview` |
+| Groq | `qwen/qwen3.8-27b`, `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `groq/compound-mini` |
 
-All five are raced concurrently rather than tried in sequence. The Gemini free
-tier fails unevenly — some models answer in two seconds, some return `503 high
-demand` instantly, some hang past thirty seconds — so racing gives both the
-lowest latency and the highest chance of an answer. Interpretations are cached
-by note text, so a repeated note costs nothing.
+Models are **raced in tiers**, not tried one at a time. The list is interleaved
+across providers and split into groups of `LLM_RACE_SIZE` (default 3), so the
+first tier always spans both providers. That tier runs concurrently and the
+first valid answer wins; only if a whole tier fails does the next one run.
+Racing beats a fixed order because the failure modes are uneven (some models
+answer in under a second, some return `503` instantly, some hang), and tiering
+keeps a normal request to three calls instead of twelve, which matters against
+per-model rate limits.
+
+Interpretations are cached by note text, so a repeated note costs nothing.
+
+Only chat-completion models capable of structured extraction are listed. The
+Groq account also exposes `whisper-large-v3` (speech to text), the `orpheus`
+voices (text to speech) and `llama-prompt-guard` (a classifier); none of these
+can perform this task, so they are deliberately excluded.
 
 ### Guardrails
 
@@ -350,10 +369,13 @@ All configuration is environment variables, loaded from `.env` (never committed)
 
 | Variable | Default | Meaning |
 | :--- | :--- | :--- |
-| `GEMINI_API_KEY` | *(none)* | Google Gemini API key. **Required** for LLM interpretation. |
-| `GEMINI_MODELS` | the five models above | Comma-separated model IDs to race. |
+| `GEMINI_API_KEY` | *(none)* | Google Gemini API key. |
+| `GEMINI_MODELS` | the eight models above | Comma-separated Gemini model IDs. |
+| `GROQ_API_KEY` | *(none)* | Groq API key. |
+| `GROQ_MODELS` | the four models above | Comma-separated Groq model IDs. |
+| `LLM_RACE_SIZE` | `3` | How many models to race concurrently per tier. |
 | `LLM_TIMEOUT_S` | `10` | Per-model request timeout. |
-| `LLM_TOTAL_BUDGET_S` | `11` | Total interpretation budget, kept under the 30s limit. |
+| `LLM_TOTAL_BUDGET_S` | `7` | Total interpretation budget, well under the 30s limit. |
 | `PORT` | `8000` | Port the API binds to. |
 
 ---
@@ -442,6 +464,7 @@ run_onVM.py      VM deployment with nginx, certbot and watchdog
 | [httpx](https://www.python-httpx.org/) | Async HTTP client for the Gemini API |
 | [pytest](https://pytest.org/) | Test suite |
 | [Google Gemini API](https://ai.google.dev/) | Operator-note interpretation |
+| [Groq API](https://groq.com/) | Operator-note interpretation, second provider |
 | [nginx](https://nginx.org/), [Docker](https://www.docker.com/), [certbot](https://certbot.eff.org/) | Deployment |
 
 ---
@@ -460,11 +483,12 @@ run_onVM.py      VM deployment with nginx, certbot and watchdog
 
 ## 11. Known limitations
 
-- **Gemini free-tier reliability.** During development the free tier frequently
-  returned `503 high demand`, and `gemini-3.1-pro-preview` returned `429 quota
-  exceeded`. The concurrent racing, caching and retry logic exist specifically
-  to work around this. Enabling billing on the key would make the LLM path far
-  more consistent.
+- **Free-tier rate limits.** During development the Gemini free tier frequently
+  returned `503 high demand` and `429 quota exceeded`. Running Groq as a second
+  provider on a separate quota, plus tiered racing and caching, exists
+  specifically to work around this. Under a hard burst (25 requests with no gap
+  at all) some requests still escalate through tiers and approach the 7s budget.
+  Enabling billing on either key would remove this entirely.
 - **Deterministic fallback.** If all five models fail, a regex-based parser
   answers instead of returning an error, so the service stays available during a
   provider outage. This is an availability net, not the primary path — the LLM
