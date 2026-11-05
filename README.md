@@ -12,7 +12,7 @@ directive plus the underlying energy, battery and grid rules.
 | **Health endpoint** | `GET /health` → `{"status":"ok"}` |
 | **Main endpoint** | `POST /optimize-energy` |
 | **Operator console** | `GET /ui/` (served by the same process) |
-| **Live endpoint** | https://buptestapi.ahbab.dev |
+| **Live endpoint** | https://karenbachao.vercel.app |
 | **LLM providers** | Google Gemini and Groq (raced, separate quotas) |
 | **Optimizer** | SciPy `linprog` with the HiGHS backend |
 
@@ -396,22 +396,26 @@ baked-in credentials** — the key is supplied at runtime.
 
 ### Live deployment
 
-The service runs at **https://buptestapi.ahbab.dev**:
+The service runs on Vercel at **https://karenbachao.vercel.app**, with the operator
+console at [/ui/](https://karenbachao.vercel.app/ui/). It runs without LLM keys, so operator
+notes go through the deterministic fallback parser instead of a language model:
 
 ```bash
-curl https://buptestapi.ahbab.dev/health
+curl https://karenbachao.vercel.app/health
 # {"status":"ok"}
 ```
 
-It shares a VM with unrelated sites, so it does **not** run its own nginx.
+### Hosting beside other sites on a shared VM
+
+On a VM shared with unrelated sites, it should **not** run its own nginx.
 The API container binds loopback only and the host nginx proxies to it:
 
 ```bash
 docker run -d --name gridwise-api --restart unless-stopped   -p 127.0.0.1:8200:8000 --env-file .env --memory 512m gridwise-api:1.0.0
 ```
 
-`/etc/nginx/sites-available/buptestapi.conf` proxies `buptestapi.ahbab.dev`
-to `127.0.0.1:8200`, with TLS issued by the host's certbot. Nothing binds
+The host's nginx site proxies your domain to `127.0.0.1:8200`, with TLS issued
+by the host's certbot. Nothing binds
 ports 80, 443 or 8000, so co-hosted sites are untouched.
 
 > Use `run_onVM.py` only on a **dedicated** VM. It frees ports 80, 443 and
